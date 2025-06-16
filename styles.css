@@ -871,6 +871,83 @@
 	font-size: 16px;
 }
 
+/* 确认对话框样式 */
+.quest-generator-confirmation-modal {
+	max-width: 500px;
+	padding: 20px;
+}
+
+.confirmation-modal-title {
+	margin: 0 0 16px 0;
+	color: var(--text-normal);
+	font-size: 1.2em;
+	font-weight: 600;
+	text-align: center;
+}
+
+.confirmation-modal-message {
+	margin: 0 0 24px 0;
+	color: var(--text-muted);
+	line-height: 1.5;
+	white-space: pre-line;
+	text-align: left;
+}
+
+.confirmation-modal-buttons {
+	display: flex;
+	gap: 12px;
+	justify-content: flex-end;
+	align-items: center;
+}
+
+.confirmation-modal-cancel {
+	background: var(--interactive-normal);
+	color: var(--text-normal);
+	border: 1px solid var(--background-modifier-border);
+	padding: 8px 16px;
+	border-radius: 6px;
+	cursor: pointer;
+	transition: all 0.2s ease;
+}
+
+.confirmation-modal-cancel:hover {
+	background: var(--interactive-hover);
+	border-color: var(--interactive-accent);
+}
+
+.confirmation-modal-confirm {
+	background: var(--color-red);
+	color: white;
+	border: 1px solid var(--color-red);
+	padding: 8px 16px;
+	border-radius: 6px;
+	cursor: pointer;
+	transition: all 0.2s ease;
+}
+
+.confirmation-modal-confirm:hover {
+	background: var(--color-red-hover, #dc2626);
+	border-color: var(--color-red-hover, #dc2626);
+}
+
+/* 设置页面按钮样式增强 */
+.setting-item button.mod-warning {
+	background: var(--color-orange);
+	color: white;
+	border: 1px solid var(--color-orange);
+}
+
+.setting-item button.mod-warning:hover {
+	background: var(--color-orange-hover, #ea580c);
+	border-color: var(--color-orange-hover, #ea580c);
+}
+
+/* 数据管理部分样式 */
+.setting-item[data-name="清空历史分数"] .setting-item-description {
+	color: var(--color-orange);
+	font-weight: 500;
+}
+
 /* Responsive design */
 @media (max-width: 768px) {
 	.quiz-modal .quiz-content {
@@ -969,6 +1046,21 @@
     .result-button-container button {
         width: 100%;
         max-width: 200px;
+    }
+    
+    /* 确认对话框响应式 */
+    .quest-generator-confirmation-modal {
+        max-width: 90vw;
+        padding: 16px;
+    }
+    
+    .confirmation-modal-buttons {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .confirmation-modal-buttons button {
+        width: 100%;
     }
 }
 

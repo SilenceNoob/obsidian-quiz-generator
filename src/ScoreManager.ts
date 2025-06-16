@@ -189,6 +189,55 @@ export class ScoreManager {
 		}
 	}
 
+	/**
+	 * 清空所有笔记的测验记录
+	 */
+	async clearAllScores(): Promise<void> {
+		try {
+			const markdownFiles = this.app.vault.getMarkdownFiles();
+			let clearedCount = 0;
+			let errorCount = 0;
+
+			for (const file of markdownFiles) {
+				try {
+					const content = await this.app.vault.read(file);
+					const { frontmatter, body } = this.parseFrontmatter(content);
+
+					// 检查是否有测验相关的元数据
+					const hasQuizData = frontmatter[this.SCORE_METADATA_KEY] || 
+									   frontmatter[this.AVERAGE_METADATA_KEY] || 
+									   frontmatter[this.ATTEMPTS_METADATA_KEY] || 
+									   frontmatter[this.LAST_ATTEMPT_KEY];
+
+					if (hasQuizData) {
+						// 删除测验相关的元数据
+						delete frontmatter[this.SCORE_METADATA_KEY];
+						delete frontmatter[this.AVERAGE_METADATA_KEY];
+						delete frontmatter[this.ATTEMPTS_METADATA_KEY];
+						delete frontmatter[this.LAST_ATTEMPT_KEY];
+
+						// 写回文件
+						const newContent = this.buildContentWithFrontmatter(frontmatter, body);
+						await this.app.vault.modify(file, newContent);
+						clearedCount++;
+					}
+				} catch (error) {
+					console.warn(`清除文件 ${file.path} 的测验记录时出错:`, error);
+					errorCount++;
+				}
+			}
+
+			if (errorCount > 0) {
+				new Notice(`✅ 已清除 ${clearedCount} 个文件的测验记录，${errorCount} 个文件处理失败`);
+			} else {
+				new Notice(`✅ 已成功清除所有测验记录（共 ${clearedCount} 个文件）`);
+			}
+		} catch (error) {
+			console.error('清空所有分数记录时出错:', error);
+			new Notice('❌ 清空记录失败，请查看控制台了解详情。');
+		}
+	}
+
 	// 私有方法
 
 	private async findNoteByTitle(title: string): Promise<TFile | null> {

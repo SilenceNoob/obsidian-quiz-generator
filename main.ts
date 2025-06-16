@@ -7,6 +7,7 @@ import { ResultModal } from './src/ResultModal';
 import { ScoreManager } from './src/ScoreManager';
 import { StatisticsModal } from './src/StatisticsModal';
 import { NoteSelectionModal, SelectedNote } from './src/NoteSelectionModal';
+import { ConfirmationModal } from './src/ConfirmationModal';
 
 interface QuestGeneratorSettings {
 	deepSeekApiKey: string;
@@ -54,7 +55,7 @@ export default class QuestGeneratorPlugin extends Plugin {
 	private deepSeekAPI: DeepSeekAPI;
 	private questionGenerator: QuestionGenerator;
 	private noteSelector: NoteSelector;
-	private scoreManager: ScoreManager;
+	scoreManager: ScoreManager;
 
 	async onload() {
 		await this.loadSettings();
@@ -509,6 +510,36 @@ class QuestGeneratorSettingTab extends PluginSettingTab {
 				.setButtonText('查看统计')
 				.onClick(async () => {
 					await this.plugin.showStatistics();
+				}));
+
+		// 数据管理
+		containerEl.createEl('h2', { text: '数据管理' });
+
+		new Setting(containerEl)
+			.setName('清空历史分数')
+			.setDesc('⚠️ 清空所有笔记的测验记录和分数信息，此操作不可撤销')
+			.addButton(button => button
+				.setButtonText('清空所有记录')
+				.setWarning()
+				.onClick(async () => {
+					const confirmModal = new ConfirmationModal(
+						this.app,
+						'确认清空历史分数',
+						'您确定要清空所有笔记的测验记录吗？\n\n此操作将删除：\n• 所有测验分数\n• 平均分数\n• 尝试次数\n• 最后尝试时间\n\n此操作不可撤销！',
+						async () => {
+							button.setButtonText('清空中...');
+							button.setDisabled(true);
+							try {
+								await this.plugin.scoreManager.clearAllScores();
+							} finally {
+								button.setButtonText('清空所有记录');
+								button.setDisabled(false);
+							}
+						},
+						'确认清空',
+						'取消'
+					);
+					confirmModal.open();
 				}));
 
 		// Quiz Settings
