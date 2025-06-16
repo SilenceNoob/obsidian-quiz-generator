@@ -4,6 +4,8 @@ import { QuestionGenerator, QuestGeneratorSettings as QuizSettings } from './src
 import { NoteSelector, NoteSelectorOptions } from './src/NoteSelector';
 import { QuizModal, QuizResult } from './src/QuizModal';
 import { ResultModal } from './src/ResultModal';
+import { ScoreManager } from './src/ScoreManager';
+import { StatisticsModal } from './src/StatisticsModal';
 
 interface QuestGeneratorSettings {
 	deepSeekApiKey: string;
@@ -39,6 +41,7 @@ export default class QuestGeneratorPlugin extends Plugin {
 	private deepSeekAPI: DeepSeekAPI;
 	private questionGenerator: QuestionGenerator;
 	private noteSelector: NoteSelector;
+	private scoreManager: ScoreManager;
 
 	async onload() {
 		await this.loadSettings();
@@ -47,6 +50,7 @@ export default class QuestGeneratorPlugin extends Plugin {
 		this.deepSeekAPI = new DeepSeekAPI(this.settings.deepSeekApiKey);
 		this.questionGenerator = new QuestionGenerator(this.deepSeekAPI);
 		this.noteSelector = new NoteSelector(this.app, this.settings.noteSelectorOptions);
+		this.scoreManager = new ScoreManager(this.app);
 
 		// Add ribbon icon
 		const ribbonIconEl = this.addRibbonIcon('brain', '生成测验题', async (evt: MouseEvent) => {
@@ -76,6 +80,14 @@ export default class QuestGeneratorPlugin extends Plugin {
 			name: '测试 DeepSeek API 连接',
 			callback: async () => {
 				await this.testDeepSeekConnection();
+			}
+		});
+
+		this.addCommand({
+			id: 'show-quiz-statistics',
+			name: '查看测验统计',
+			callback: async () => {
+				await this.showStatistics();
 			}
 		});
 
@@ -120,7 +132,8 @@ export default class QuestGeneratorPlugin extends Plugin {
 			}
 
 			new Notice(`已选择笔记：${selectedNote.title}`);
-			await this.generateQuizFromNote(selectedNote.title, selectedNote.content);
+			// 使用文件路径作为记录分数的key，但保留显示标题用于题目生成
+			await this.generateQuizFromNote(selectedNote.path, selectedNote.content, selectedNote.title);
 			
 		} catch (error) {
 			console.error('Error starting quiz generation:', error);
@@ -158,10 +171,11 @@ export default class QuestGeneratorPlugin extends Plugin {
 		}
 	}
 
-	private async generateQuizFromNote(title: string, content: string) {
+	private async generateQuizFromNote(title: string, content: string, displayTitle?: string) {
+		// 创建持续显示的加载提示
+		const loadingNotice = new Notice('🔄 正在生成测验题，请稍候...', 0); // 0 表示不自动消失
+		
 		try {
-			new Notice('正在生成测验题...');
-			
 			const quizSettings: QuizSettings = {
 				questionCount: this.settings.questionCount,
 				questionTypes: this.settings.questionTypes,
@@ -170,40 +184,50 @@ export default class QuestGeneratorPlugin extends Plugin {
 
 			const questions = await this.questionGenerator.generateQuestions(
 				content,
-				title,
+				displayTitle || title, // 使用显示标题（如果提供）或文件名
 				quizSettings
 			);
 
+			// 隐藏加载提示
+			loadingNotice.hide();
+
 			if (questions.length === 0) {
-				new Notice('未能生成任何题目，请尝试调整设置或选择其他笔记。');
+				new Notice('❌ 未能生成任何题目，请尝试调整设置或选择其他笔记。');
 				return;
 			}
 
-			new Notice(`成功生成 ${questions.length} 道题目！`);
+			new Notice(`✅ 成功生成 ${questions.length} 道题目！`);
 			
 			// Open quiz modal
 			const quizModal = new QuizModal(
 				this.app,
 				questions,
 				(result: QuizResult) => {
-					this.showQuizResult(result);
+					this.showQuizResult(result, title);
 				}
 			);
 			quizModal.open();
 			
 		} catch (error) {
+			// 隐藏加载提示
+			loadingNotice.hide();
+			
 			console.error('Error generating quiz:', error);
 			if (error.message.includes('API key')) {
-				new Notice('DeepSeek API 密钥无效，请在设置中检查。');
+				new Notice('❌ DeepSeek API 密钥无效，请在设置中检查。');
 			} else if (error.message.includes('Failed to parse')) {
-				new Notice('AI 响应格式错误，请重试。');
+				new Notice('❌ AI 响应格式错误，请重试。');
 			} else {
-				new Notice('生成测验时出错：' + error.message);
+				new Notice('❌ 生成测验时出错：' + error.message);
 			}
 		}
 	}
 
-	private showQuizResult(result: QuizResult) {
+	private async showQuizResult(result: QuizResult, noteTitle: string) {
+		// 记录分数到笔记元数据
+		await this.scoreManager.recordScore(noteTitle, result);
+		
+		// 显示结果
 		const resultModal = new ResultModal(this.app, result);
 		resultModal.open();
 	}
@@ -247,6 +271,11 @@ export default class QuestGeneratorPlugin extends Plugin {
 		}
 
 		return true;
+	}
+
+	async showStatistics() {
+		const statisticsModal = new StatisticsModal(this.app, this.scoreManager);
+		statisticsModal.open();
 	}
 
 	private cleanMarkdownContent(content: string): string {
@@ -346,6 +375,16 @@ class QuestGeneratorSettingTab extends PluginSettingTab {
 						button.setButtonText('测试连接');
 						button.setDisabled(false);
 					}
+				}));
+
+		// 测验统计
+		new Setting(containerEl)
+			.setName('测验统计')
+			.setDesc('查看所有笔记的测验成绩统计')
+			.addButton(button => button
+				.setButtonText('查看统计')
+				.onClick(async () => {
+					await this.plugin.showStatistics();
 				}));
 
 		// Quiz Settings
