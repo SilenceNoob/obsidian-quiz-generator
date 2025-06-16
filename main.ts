@@ -6,6 +6,7 @@ import { QuizModal, QuizResult } from './src/QuizModal';
 import { ResultModal } from './src/ResultModal';
 import { ScoreManager } from './src/ScoreManager';
 import { StatisticsModal } from './src/StatisticsModal';
+import { NoteSelectionModal, SelectedNote } from './src/NoteSelectionModal';
 
 interface QuestGeneratorSettings {
 	deepSeekApiKey: string;
@@ -66,7 +67,7 @@ export default class QuestGeneratorPlugin extends Plugin {
 
 		// Add ribbon icon
 		const ribbonIconEl = this.addRibbonIcon('brain', '生成测验题', async (evt: MouseEvent) => {
-			await this.startQuizGeneration();
+			this.openNoteSelectionModal();
 		});
 		ribbonIconEl.addClass('quest-generator-ribbon');
 
@@ -127,6 +128,21 @@ export default class QuestGeneratorPlugin extends Plugin {
 		if (this.noteSelector) {
 			this.noteSelector.updateOptions(this.settings.noteSelectorOptions);
 		}
+	}
+
+	private openNoteSelectionModal() {
+		if (!this.validateSettings()) {
+			return;
+		}
+
+		const modal = new NoteSelectionModal(
+			this.app,
+			this.settings.noteSelectorOptions,
+			async (selectedNote: SelectedNote) => {
+				await this.generateQuizFromNote(selectedNote.path, selectedNote.content, selectedNote.title);
+			}
+		);
+		modal.open();
 	}
 
 	private async startQuizGeneration() {

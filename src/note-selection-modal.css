@@ -1,0 +1,99 @@
+/* 笔记选择模态框样式 */
+.note-selection-divider {
+    margin: 20px 0;
+    border: none;
+    border-top: 1px solid var(--background-modifier-border);
+}
+
+.note-selection-modal .modal-content {
+    padding: 20px;
+}
+
+.note-selection-modal .setting-item {
+    margin-bottom: 15px;
+    padding: 15px;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 8px;
+    background-color: var(--background-secondary);
+}
+
+.note-selection-modal .setting-item:hover {
+    background-color: var(--background-modifier-hover);
+}
+
+.note-selection-modal .setting-item-name {
+    font-weight: 600;
+    color: var(--text-normal);
+    margin-bottom: 5px;
+}
+
+.note-selection-modal .setting-item-description {
+    color: var(--text-muted);
+    font-size: 0.9em;
+    margin-bottom: 10px;
+}
+
+.note-selection-modal button {
+    min-width: 120px;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-weight: 500;
+}
+
+.note-selection-modal .mod-cta {
+    background-color: var(--interactive-accent);
+    color: var(--text-on-accent);
+}
+
+.note-selection-modal .mod-cta:hover {
+    background-color: var(--interactive-accent-hover);
+}
+
+/* 笔记搜索模态框样式 */
+.suggestion-item .note-title {
+    font-weight: 500;
+    color: var(--text-normal);
+}
+
+.suggestion-item .note-path {
+    color: var(--text-muted);
+    font-size: 0.85em;
+    margin-top: 2px;
+}
+
+.suggestion-item:hover .note-title {
+    color: var(--text-accent);
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .note-selection-modal .setting-item {
+        padding: 12px;
+        margin-bottom: 12px;
+    }
+    
+    .note-selection-modal button {
+        width: 100%;
+        margin-top: 8px;
+    }
+}
+
+/* 深色主题适配 */
+.theme-dark .note-selection-modal .setting-item {
+    border-color: var(--background-modifier-border);
+    background-color: var(--background-secondary);
+}
+
+.theme-dark .note-selection-modal .setting-item:hover {
+    background-color: var(--background-modifier-hover);
+}
+
+/* 浅色主题适配 */
+.theme-light .note-selection-modal .setting-item {
+    border-color: var(--background-modifier-border);
+    background-color: var(--background-secondary);
+}
+
+.theme-light .note-selection-modal .setting-item:hover {
+    background-color: var(--background-modifier-hover);
+}

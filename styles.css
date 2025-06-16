@@ -1,5 +1,8 @@
 /* Quest Generator Plugin Styles */
 
+/* 导入笔记选择模态框样式 */
+@import url('./src/note-selection-modal.css');
+
 /* Main containers */
 .quiz-modal {
     overflow-y: auto;
