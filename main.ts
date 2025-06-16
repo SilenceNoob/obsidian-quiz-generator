@@ -1,6 +1,6 @@
 import { App, Notice, Plugin, PluginSettingTab, Setting, TFile } from 'obsidian';
 import { DeepSeekAPI } from './src/DeepSeekAPI';
-import { QuestionGenerator, QuestGeneratorSettings as QuizSettings } from './src/QuestionGenerator';
+import { QuestionGenerator, QuestGeneratorSettings as QuizSettings, Question } from './src/QuestionGenerator';
 import { NoteSelector, NoteSelectorOptions } from './src/NoteSelector';
 import { QuizModal, QuizResult } from './src/QuizModal';
 import { ResultModal } from './src/ResultModal';
@@ -9,11 +9,11 @@ import { StatisticsModal } from './src/StatisticsModal';
 
 interface QuestGeneratorSettings {
 	deepSeekApiKey: string;
-	questionCount: number;
+	questionCount: number; // 保留用于向后兼容，但不再使用
 	questionTypes: {
-		multipleChoice: boolean;
-		multipleAnswer: boolean;
-		trueFalse: boolean;
+		multipleChoice: number;
+		multipleAnswer: number;
+		trueFalse: number;
 	};
 	difficulty: 'easy' | 'medium' | 'hard';
 	noteSelectorOptions: NoteSelectorOptions;
@@ -21,15 +21,16 @@ interface QuestGeneratorSettings {
 		width: number;
 		height: number;
 	};
+	maxQuestionsPerBatch: number; // 每批次最大题目数量
 }
 
 const DEFAULT_SETTINGS: QuestGeneratorSettings = {
 	deepSeekApiKey: '',
-	questionCount: 5,
+	questionCount: 5, // 保留用于向后兼容
 	questionTypes: {
-		multipleChoice: true,
-		multipleAnswer: true,
-		trueFalse: true
+		multipleChoice: 2,
+		multipleAnswer: 2,
+		trueFalse: 1
 	},
 	difficulty: 'medium',
 	noteSelectorOptions: {
@@ -41,7 +42,8 @@ const DEFAULT_SETTINGS: QuestGeneratorSettings = {
 	modalSize: {
 		width: 800,
 		height: 600
-	}
+	},
+	maxQuestionsPerBatch: 10
 };
 
 export default class QuestGeneratorPlugin extends Plugin {
@@ -184,17 +186,14 @@ export default class QuestGeneratorPlugin extends Plugin {
 		const loadingNotice = new Notice('🔄 正在生成测验题，请稍候...', 0); // 0 表示不自动消失
 		
 		try {
-			const quizSettings: QuizSettings = {
-				questionCount: this.settings.questionCount,
-				questionTypes: this.settings.questionTypes,
-				difficulty: this.settings.difficulty
-			};
-
-			const questions = await this.questionGenerator.generateQuestions(
+			// 按题型分别生成题目
+			const allQuestions = await this.generateQuestionsByType(
 				content,
-				displayTitle || title, // 使用显示标题（如果提供）或文件名
-				quizSettings
+				displayTitle || title,
+				this.settings
 			);
+
+			const questions = allQuestions;
 
 			// 隐藏加载提示
 			loadingNotice.hide();
@@ -230,6 +229,97 @@ export default class QuestGeneratorPlugin extends Plugin {
 				new Notice('❌ 生成测验时出错：' + error.message);
 			}
 		}
+	}
+
+	private async generateQuestionsByType(
+		content: string,
+		title: string,
+		settings: QuestGeneratorSettings
+	): Promise<Question[]> {
+		const allQuestions: Question[] = [];
+		const questionTypes = [
+			{ type: 'multipleChoice', count: settings.questionTypes.multipleChoice, name: '单选题' },
+			{ type: 'multipleAnswer', count: settings.questionTypes.multipleAnswer, name: '多选题' },
+			{ type: 'trueFalse', count: settings.questionTypes.trueFalse, name: '判断题' }
+		];
+
+		for (const questionType of questionTypes) {
+			if (questionType.count > 0) {
+				const questions = await this.generateQuestionsForType(
+				content,
+				title,
+				questionType.type,
+				questionType.count,
+				settings.difficulty,
+				settings.maxQuestionsPerBatch
+			);
+				allQuestions.push(...questions);
+				new Notice(`✅ 已生成 ${questions.length} 道${questionType.name}`);
+			}
+		}
+
+		return allQuestions;
+	}
+
+	private async generateQuestionsForType(
+		content: string,
+		title: string,
+		questionType: string,
+		totalCount: number,
+		difficulty: 'easy' | 'medium' | 'hard',
+		maxPerBatch: number
+	): Promise<Question[]> {
+		const allQuestions: Question[] = [];
+		let remainingCount = totalCount;
+
+		while (remainingCount > 0) {
+			const batchSize = Math.min(remainingCount, maxPerBatch);
+			
+			// 构建只包含当前题型的设置
+			const batchSettings: QuizSettings = {
+				questionCount: batchSize,
+				questionTypes: {
+					multipleChoice: questionType === 'multipleChoice' ? batchSize : 0,
+					multipleAnswer: questionType === 'multipleAnswer' ? batchSize : 0,
+					trueFalse: questionType === 'trueFalse' ? batchSize : 0
+				},
+				difficulty: difficulty,
+				maxQuestionsPerBatch: maxPerBatch
+			};
+
+			try {
+				// 将题型名称转换为API期望的格式
+				const apiQuestionType = questionType === 'multipleChoice' ? 'multiple_choice' :
+										questionType === 'multipleAnswer' ? 'multiple_answer' : 'true_false';
+				
+				const batchQuestions = await this.questionGenerator.generateQuestions(
+					content,
+					title,
+					batchSettings,
+					apiQuestionType,
+					batchSize
+				);
+				allQuestions.push(...batchQuestions);
+				remainingCount -= batchQuestions.length;
+				
+				// 如果生成的题目数量少于预期，可能是内容不足，停止继续生成
+				if (batchQuestions.length < batchSize && batchQuestions.length > 0) {
+					console.warn(`题型 ${questionType} 只生成了 ${batchQuestions.length} 道题目，少于预期的 ${batchSize} 道`);
+					break;
+				}
+				
+				// 如果没有生成任何题目，停止继续尝试
+				if (batchQuestions.length === 0) {
+					console.warn(`题型 ${questionType} 无法生成题目，跳过剩余 ${remainingCount} 道`);
+					break;
+				}
+			} catch (error) {
+				console.error(`生成题型 ${questionType} 时出错:`, error);
+				break;
+			}
+		}
+
+		return allQuestions;
 	}
 
 	private async showQuizResult(result: QuizResult, noteTitle: string) {
@@ -268,14 +358,17 @@ export default class QuestGeneratorPlugin extends Plugin {
 			return false;
 		}
 
-		const hasEnabledQuestionType = Object.values(this.settings.questionTypes).some(enabled => enabled);
-		if (!hasEnabledQuestionType) {
-			new Notice('请至少启用一种题目类型。');
+		const totalQuestions = this.settings.questionTypes.multipleChoice + 
+							 this.settings.questionTypes.multipleAnswer + 
+							 this.settings.questionTypes.trueFalse;
+		
+		if (totalQuestions === 0) {
+			new Notice('请至少设置一种题目类型的数量大于0。');
 			return false;
 		}
 
-		if (this.settings.questionCount < 1 || this.settings.questionCount > 20) {
-			new Notice('题目数量应在 1-20 之间。');
+		if (totalQuestions > 100) {
+			new Notice('题目总数量不能超过100道。');
 			return false;
 		}
 
@@ -424,14 +517,14 @@ class QuestGeneratorSettingTab extends PluginSettingTab {
 				}));
 
 		new Setting(containerEl)
-			.setName('题目数量')
-			.setDesc('每次测验生成的题目数量（1-20）')
+			.setName('每批次最大题目数量')
+			.setDesc('单次API调用生成的最大题目数量，避免超出token限制（1-20）')
 			.addSlider(slider => slider
 				.setLimits(1, 20, 1)
-				.setValue(this.plugin.settings.questionCount)
+				.setValue(this.plugin.settings.maxQuestionsPerBatch)
 				.setDynamicTooltip()
 				.onChange(async (value) => {
-					this.plugin.settings.questionCount = value;
+					this.plugin.settings.maxQuestionsPerBatch = value;
 					await this.plugin.saveSettings();
 				}));
 
@@ -449,37 +542,43 @@ class QuestGeneratorSettingTab extends PluginSettingTab {
 				}));
 
 		// Question Types
-		containerEl.createEl('h3', { text: '题目类型' });
+		containerEl.createEl('h3', { text: '题目类型数量配置' });
 		containerEl.createEl('p', { 
-			text: '选择要生成的题目类型（至少选择一种）',
+			text: '设置每种题型要生成的数量，设为0表示不生成该类型题目',
 			cls: 'setting-item-description'
 		});
 
 		new Setting(containerEl)
-			.setName('单选题')
-			.setDesc('包含单选题（4个选项，1个正确答案）')
-			.addToggle(toggle => toggle
+			.setName('单选题数量')
+			.setDesc('生成单选题的数量（0-50，4个选项，1个正确答案）')
+			.addSlider(slider => slider
+				.setLimits(0, 50, 1)
 				.setValue(this.plugin.settings.questionTypes.multipleChoice)
+				.setDynamicTooltip()
 				.onChange(async (value) => {
 					this.plugin.settings.questionTypes.multipleChoice = value;
 					await this.plugin.saveSettings();
 				}));
 
 		new Setting(containerEl)
-			.setName('多选题')
-			.setDesc('包含多选题（4-6个选项，2-3个正确答案）')
-			.addToggle(toggle => toggle
+			.setName('多选题数量')
+			.setDesc('生成多选题的数量（0-50，4-6个选项，2-3个正确答案）')
+			.addSlider(slider => slider
+				.setLimits(0, 50, 1)
 				.setValue(this.plugin.settings.questionTypes.multipleAnswer)
+				.setDynamicTooltip()
 				.onChange(async (value) => {
 					this.plugin.settings.questionTypes.multipleAnswer = value;
 					await this.plugin.saveSettings();
 				}));
 
 		new Setting(containerEl)
-			.setName('判断题')
-			.setDesc('包含判断题（正确/错误）')
-			.addToggle(toggle => toggle
+			.setName('判断题数量')
+			.setDesc('生成判断题的数量（0-50，正确/错误）')
+			.addSlider(slider => slider
+				.setLimits(0, 50, 1)
 				.setValue(this.plugin.settings.questionTypes.trueFalse)
+				.setDynamicTooltip()
 				.onChange(async (value) => {
 					this.plugin.settings.questionTypes.trueFalse = value;
 					await this.plugin.saveSettings();

@@ -13,11 +13,12 @@ export interface Question {
 export interface QuestGeneratorSettings {
 	questionCount: number;
 	questionTypes: {
-		multipleChoice: boolean;
-		multipleAnswer: boolean;
-		trueFalse: boolean;
+		multipleChoice: number;
+		multipleAnswer: number;
+		trueFalse: number;
 	};
 	difficulty: 'easy' | 'medium' | 'hard';
+	maxQuestionsPerBatch: number;
 }
 
 export class QuestionGenerator {
@@ -30,26 +31,23 @@ export class QuestionGenerator {
 	async generateQuestions(
 		content: string,
 		title: string,
-		settings: QuestGeneratorSettings
+		settings: QuestGeneratorSettings,
+		questionType?: string,
+		questionCount?: number
 	): Promise<Question[]> {
-		const prompt = this.buildPrompt(content, title, settings);
+		const prompt = this.buildPrompt(content, title, settings, questionType, questionCount);
 		
 		try {
 			const response = await this.deepSeekAPI.generateQuestions(prompt);
 			const questions = this.parseResponse(response);
-			return this.validateAndFilterQuestions(questions, settings);
+			return this.validateAndFilterQuestions(questions, settings, questionType, questionCount);
 		} catch (error) {
 			console.error('Error generating questions:', error);
 			throw error;
 		}
 	}
 
-	private buildPrompt(content: string, title: string, settings: QuestGeneratorSettings): string {
-		const enabledTypes = [];
-		if (settings.questionTypes.multipleChoice) enabledTypes.push('单选题 (multiple_choice)');
-		if (settings.questionTypes.multipleAnswer) enabledTypes.push('多选题 (multiple_answer)');
-		if (settings.questionTypes.trueFalse) enabledTypes.push('判断题 (true_false)');
-
+	private buildPrompt(content: string, title: string, settings: QuestGeneratorSettings, questionType?: string, questionCount?: number): string {
 		const difficultyMap = {
 			easy: '简单',
 			medium: '中等',
@@ -62,7 +60,52 @@ export class QuestionGenerator {
 			? content.substring(0, maxContentLength) + '...'
 			: content;
 
-		return `请基于以下笔记内容生成 ${settings.questionCount} 道测试题。
+		// If specific question type and count are provided, generate only that type
+		if (questionType && questionCount) {
+			const typeMap: { [key: string]: string } = {
+				multiple_choice: '单选题',
+				multiple_answer: '多选题',
+				true_false: '判断题'
+			};
+
+			return `请基于以下笔记内容生成 ${questionCount} 道 ${typeMap[questionType]} 测试题。
+
+笔记标题：${title}
+
+笔记内容：
+${truncatedContent}
+
+要求：
+1. 题目类型：仅生成 ${typeMap[questionType]} (${questionType})
+2. 难度等级：${difficultyMap[settings.difficulty]}
+3. 题目应该基于笔记内容，测试对关键概念、事实和理解的掌握
+4. 每道题都要有详细的解析说明
+5. 单选题有4个选项，只有1个正确答案
+6. 多选题有4-6个选项，可能有2-3个正确答案
+7. 判断题只有对错两个选项
+
+请严格按照以下JSON格式返回，不要包含任何其他文本：
+
+{
+  "questions": [
+    {
+      "type": "${questionType}",
+      "question": "题目内容",
+      "options": ["选项A", "选项B", "选项C", "选项D"],
+      "correct": [0],
+      "explanation": "详细解析"
+    }
+  ]
+}`;
+		}
+
+		// Legacy mode: build enabled question types list for mixed generation
+		const enabledTypes: string[] = [];
+		if (settings.questionTypes.multipleChoice) enabledTypes.push('单选题 (multiple_choice)');
+		if (settings.questionTypes.multipleAnswer) enabledTypes.push('多选题 (multiple_answer)');
+		if (settings.questionTypes.trueFalse) enabledTypes.push('判断题 (true_false)');
+
+		return `请基于以下笔记内容生成 ${settings.questionCount || 5} 道测试题。
 
 笔记标题：${title}
 
@@ -142,22 +185,27 @@ ${truncatedContent}
 		}
 	}
 
-	private validateAndFilterQuestions(questions: Question[], settings: QuestGeneratorSettings): Question[] {
-		const validQuestions = questions.filter(q => this.isValidQuestion(q, settings));
+	private validateAndFilterQuestions(questions: Question[], settings: QuestGeneratorSettings, questionType?: string, questionCount?: number): Question[] {
+		const validQuestions = questions.filter(q => this.isValidQuestion(q, settings, questionType));
 		
 		// Limit to requested count
-		return validQuestions.slice(0, settings.questionCount);
+		const targetCount = questionCount || settings.questionCount;
+		return validQuestions.slice(0, targetCount);
 	}
 
-	private isValidQuestion(question: Question, settings: QuestGeneratorSettings): boolean {
-		// Check if question type is enabled
-		const typeEnabled = (
-			(question.type === 'multiple_choice' && settings.questionTypes.multipleChoice) ||
-			(question.type === 'multiple_answer' && settings.questionTypes.multipleAnswer) ||
-			(question.type === 'true_false' && settings.questionTypes.trueFalse)
-		);
-
-		if (!typeEnabled) return false;
+	private isValidQuestion(question: Question, settings: QuestGeneratorSettings, questionType?: string): boolean {
+		// If specific question type is provided, only validate that type
+		if (questionType) {
+			if (question.type !== questionType) return false;
+		} else {
+			// Check if question type is enabled in settings
+			const typeEnabled = (
+				(question.type === 'multiple_choice' && settings.questionTypes.multipleChoice > 0) ||
+				(question.type === 'multiple_answer' && settings.questionTypes.multipleAnswer > 0) ||
+				(question.type === 'true_false' && settings.questionTypes.trueFalse > 0)
+			);
+			if (!typeEnabled) return false;
+		}
 
 		// Basic validation
 		if (!question.question || !question.options || !question.correct || !question.explanation) {
