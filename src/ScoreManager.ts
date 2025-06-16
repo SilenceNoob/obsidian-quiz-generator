@@ -192,8 +192,6 @@ export class ScoreManager {
 	// 私有方法
 
 	private async findNoteByTitle(title: string): Promise<TFile | null> {
-		console.log(`调试信息: 开始查找笔记 "${title}"`);
-		
 		// 尝试多种可能的路径格式进行精确查找
 		const possiblePaths = [
 			title,
@@ -202,62 +200,43 @@ export class ScoreManager {
 		];
 		
 		for (const path of possiblePaths) {
-			console.log(`调试信息: 尝试路径 "${path}"`);
 			const file = this.app.vault.getAbstractFileByPath(path);
 			if (file instanceof TFile) {
-				console.log(`调试信息: 通过路径 "${path}" 找到文件`);
 				return file;
 			}
 		}
 		
-		console.log(`调试信息: 精确路径查找失败，开始遍历所有文件`);
-		
 		// 如果精确查找失败，遍历所有 Markdown 文件进行匹配
 		const allFiles = this.app.vault.getMarkdownFiles();
-		console.log(`调试信息: 当前vault中共有 ${allFiles.length} 个Markdown文件`);
 		
 		// 首先尝试直接通过路径匹配
 		for (const file of allFiles) {
 			if (file.path === title) {
-				console.log(`调试信息: 通过路径直接匹配找到文件 "${file.path}"`);
 				return file;
 			}
 		}
 		
 		// 如果路径匹配失败，尝试通过文件名匹配（向后兼容）
 		for (const file of allFiles) {
-			console.log(`调试信息: 检查文件 "${file.path}" (basename: "${file.basename}")`);
-			
 			// 通过文件名匹配（不包含扩展名）
 			if (file.basename === title) {
-				console.log(`调试信息: 通过basename匹配找到文件 "${file.path}"`);
 				return file;
 			}
 		}
 		
 		// 如果通过文件名没找到，尝试通过笔记内容中的标题匹配
-		console.log(`调试信息: 文件名匹配失败，尝试通过笔记内容标题匹配`);
-		
 		for (const file of allFiles) {
 			try {
-				// 读取文件内容进行标题匹配
-				const content = await this.app.vault.cachedRead(file);
-				const extractedTitle = this.extractTitleFromFile(file, content);
-				
-				console.log(`调试信息: 文件 "${file.path}" 的提取标题: "${extractedTitle}"`);
+				const content = await this.app.vault.read(file);
+				const extractedTitle = this.extractTitleFromContent(content);
 				
 				if (extractedTitle === title) {
-					console.log(`调试信息: 通过内容标题匹配找到文件 "${file.path}"`);
 					return file;
 				}
 			} catch (error) {
-				console.log(`调试信息: 读取文件 "${file.path}" 时出错:`, error);
+				console.error(`读取文件 ${file.path} 时出错:`, error);
 			}
 		}
-		
-		console.log(`调试信息: 未找到匹配的笔记`);
-		console.log(`调试信息: 搜索的标题: "${title}"`);
-		console.log(`调试信息: 所有文件的basename:`, allFiles.map(f => f.basename));
 		
 		return null;
 	}

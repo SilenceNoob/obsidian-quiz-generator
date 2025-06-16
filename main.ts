@@ -17,6 +17,10 @@ interface QuestGeneratorSettings {
 	};
 	difficulty: 'easy' | 'medium' | 'hard';
 	noteSelectorOptions: NoteSelectorOptions;
+	modalSize: {
+		width: number;
+		height: number;
+	};
 }
 
 const DEFAULT_SETTINGS: QuestGeneratorSettings = {
@@ -33,6 +37,10 @@ const DEFAULT_SETTINGS: QuestGeneratorSettings = {
 		excludeFolders: ['.obsidian', '.trash'],
 		includeSubfolders: true,
 		fileExtensions: ['md']
+	},
+	modalSize: {
+		width: 800,
+		height: 600
 	}
 };
 
@@ -204,7 +212,8 @@ export default class QuestGeneratorPlugin extends Plugin {
 				questions,
 				(result: QuizResult) => {
 					this.showQuizResult(result, title);
-				}
+				},
+				this.settings.modalSize
 			);
 			quizModal.open();
 			
@@ -228,7 +237,7 @@ export default class QuestGeneratorPlugin extends Plugin {
 		await this.scoreManager.recordScore(noteTitle, result);
 		
 		// 显示结果
-		const resultModal = new ResultModal(this.app, result);
+		const resultModal = new ResultModal(this.app, result, this.settings.modalSize);
 		resultModal.open();
 	}
 
@@ -389,6 +398,30 @@ class QuestGeneratorSettingTab extends PluginSettingTab {
 
 		// Quiz Settings
 		containerEl.createEl('h2', { text: '测验设置' });
+
+		new Setting(containerEl)
+			.setName('模态框宽度')
+			.setDesc('测验模态框的宽度（像素，400-1200）')
+			.addSlider(slider => slider
+				.setLimits(400, 1200, 50)
+				.setValue(this.plugin.settings.modalSize.width)
+				.setDynamicTooltip()
+				.onChange(async (value) => {
+					this.plugin.settings.modalSize.width = value;
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
+			.setName('模态框高度')
+			.setDesc('测验模态框的高度（像素，300-800）')
+			.addSlider(slider => slider
+				.setLimits(300, 800, 50)
+				.setValue(this.plugin.settings.modalSize.height)
+				.setDynamicTooltip()
+				.onChange(async (value) => {
+					this.plugin.settings.modalSize.height = value;
+					await this.plugin.saveSettings();
+				}));
 
 		new Setting(containerEl)
 			.setName('题目数量')

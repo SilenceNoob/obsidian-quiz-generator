@@ -6,16 +6,25 @@ export class ResultModal extends Modal {
 	private result: QuizResult;
 	private currentQuestionIndex: number = 0;
 	private showingResults: boolean = true;
+	private modalSize: { width: number; height: number };
 
-	constructor(app: App, result: QuizResult) {
+	constructor(app: App, result: QuizResult, modalSize: { width: number; height: number }) {
 		super(app);
 		this.result = result;
+		this.modalSize = modalSize;
 	}
 
 	onOpen() {
 		const { contentEl } = this;
 		contentEl.empty();
 		contentEl.addClass('result-modal');
+		contentEl.addClass('modal-content');
+
+		// 设置模态框大小
+		this.modalEl.style.width = `${this.modalSize.width}px`;
+		this.modalEl.style.height = `${this.modalSize.height}px`;
+		this.modalEl.style.maxWidth = `${this.modalSize.width}px`;
+		this.modalEl.style.maxHeight = `${this.modalSize.height}px`;
 
 		if (this.showingResults) {
 			this.renderOverallResults();
@@ -27,6 +36,8 @@ export class ResultModal extends Modal {
 	private renderOverallResults() {
 		const { contentEl } = this;
 		contentEl.empty();
+		contentEl.addClass('result-modal');
+		contentEl.addClass('modal-content');
 
 		// Header
 		const header = contentEl.createDiv('result-header');
@@ -125,6 +136,8 @@ export class ResultModal extends Modal {
 	private renderQuestionDetail() {
 		const { contentEl } = this;
 		contentEl.empty();
+		contentEl.addClass('result-modal');
+		contentEl.addClass('modal-content');
 
 		const question = this.result.questions[this.currentQuestionIndex];
 		const isCorrect = this.isQuestionCorrect(question);

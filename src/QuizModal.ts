@@ -14,22 +14,32 @@ export class QuizModal extends Modal {
 	private userAnswers: Map<string, number[]> = new Map();
 	private onComplete: (result: QuizResult) => void;
 	private startTime: number;
+	private modalSize: { width: number; height: number };
 
 	constructor(
 		app: App,
 		questions: Question[],
-		onComplete: (result: QuizResult) => void
+		onComplete: (result: QuizResult) => void,
+		modalSize: { width: number; height: number }
 	) {
 		super(app);
 		this.questions = questions;
 		this.onComplete = onComplete;
 		this.startTime = Date.now();
+		this.modalSize = modalSize;
 	}
 
 	onOpen() {
 		const { contentEl } = this;
 		contentEl.empty();
 		contentEl.addClass('quiz-modal');
+		contentEl.addClass('modal-content');
+
+		// 设置模态框大小
+		this.modalEl.style.width = `${this.modalSize.width}px`;
+		this.modalEl.style.height = `${this.modalSize.height}px`;
+		this.modalEl.style.maxWidth = `${this.modalSize.width}px`;
+		this.modalEl.style.maxHeight = `${this.modalSize.height}px`;
 
 		if (this.questions.length === 0) {
 			contentEl.createEl('h2', { text: '没有生成题目' });
