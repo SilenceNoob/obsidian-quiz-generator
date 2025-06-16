@@ -14,6 +14,7 @@ interface QuestGeneratorSettings {
 		multipleChoice: number;
 		multipleAnswer: number;
 		trueFalse: number;
+		thinking: number;
 	};
 	difficulty: 'easy' | 'medium' | 'hard';
 	noteSelectorOptions: NoteSelectorOptions;
@@ -30,7 +31,8 @@ const DEFAULT_SETTINGS: QuestGeneratorSettings = {
 	questionTypes: {
 		multipleChoice: 2,
 		multipleAnswer: 2,
-		trueFalse: 1
+		trueFalse: 1,
+		thinking: 1
 	},
 	difficulty: 'medium',
 	noteSelectorOptions: {
@@ -240,7 +242,8 @@ export default class QuestGeneratorPlugin extends Plugin {
 		const questionTypes = [
 			{ type: 'multipleChoice', count: settings.questionTypes.multipleChoice, name: '单选题' },
 			{ type: 'multipleAnswer', count: settings.questionTypes.multipleAnswer, name: '多选题' },
-			{ type: 'trueFalse', count: settings.questionTypes.trueFalse, name: '判断题' }
+			{ type: 'trueFalse', count: settings.questionTypes.trueFalse, name: '判断题' },
+			{ type: 'thinking', count: settings.questionTypes.thinking, name: '思考题' }
 		];
 
 		for (const questionType of questionTypes) {
@@ -281,7 +284,8 @@ export default class QuestGeneratorPlugin extends Plugin {
 				questionTypes: {
 					multipleChoice: questionType === 'multipleChoice' ? batchSize : 0,
 					multipleAnswer: questionType === 'multipleAnswer' ? batchSize : 0,
-					trueFalse: questionType === 'trueFalse' ? batchSize : 0
+					trueFalse: questionType === 'trueFalse' ? batchSize : 0,
+					thinking: questionType === 'thinking' ? batchSize : 0
 				},
 				difficulty: difficulty,
 				maxQuestionsPerBatch: maxPerBatch
@@ -290,7 +294,8 @@ export default class QuestGeneratorPlugin extends Plugin {
 			try {
 				// 将题型名称转换为API期望的格式
 				const apiQuestionType = questionType === 'multipleChoice' ? 'multiple_choice' :
-										questionType === 'multipleAnswer' ? 'multiple_answer' : 'true_false';
+										questionType === 'multipleAnswer' ? 'multiple_answer' :
+										questionType === 'trueFalse' ? 'true_false' : 'thinking';
 				
 				const batchQuestions = await this.questionGenerator.generateQuestions(
 					content,
@@ -327,7 +332,7 @@ export default class QuestGeneratorPlugin extends Plugin {
 		await this.scoreManager.recordScore(noteTitle, result);
 		
 		// 显示结果
-		const resultModal = new ResultModal(this.app, result, this.settings.modalSize);
+		const resultModal = new ResultModal(this.app, result, this.settings.modalSize, this.scoreManager, this.questionGenerator);
 		resultModal.open();
 	}
 
@@ -360,7 +365,8 @@ export default class QuestGeneratorPlugin extends Plugin {
 
 		const totalQuestions = this.settings.questionTypes.multipleChoice + 
 							 this.settings.questionTypes.multipleAnswer + 
-							 this.settings.questionTypes.trueFalse;
+							 this.settings.questionTypes.trueFalse +
+							 this.settings.questionTypes.thinking;
 		
 		if (totalQuestions === 0) {
 			new Notice('请至少设置一种题目类型的数量大于0。');
@@ -581,6 +587,18 @@ class QuestGeneratorSettingTab extends PluginSettingTab {
 				.setDynamicTooltip()
 				.onChange(async (value) => {
 					this.plugin.settings.questionTypes.trueFalse = value;
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
+			.setName('思考题数量')
+			.setDesc('生成思考题的数量（0-50，开放性问题，需要深入思考和分析）')
+			.addSlider(slider => slider
+				.setLimits(0, 50, 1)
+				.setValue(this.plugin.settings.questionTypes.thinking)
+				.setDynamicTooltip()
+				.onChange(async (value) => {
+					this.plugin.settings.questionTypes.thinking = value;
 					await this.plugin.saveSettings();
 				}));
 

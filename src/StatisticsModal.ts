@@ -16,6 +16,12 @@ export class StatisticsModal extends Modal {
 		const { contentEl } = this;
 		contentEl.addClass('statistics-modal');
 
+		// 设置模态框大小
+		this.modalEl.style.width = '90vw';
+		this.modalEl.style.height = '80vh';
+		this.modalEl.style.maxWidth = '1000px';
+		this.modalEl.style.maxHeight = '800px';
+
 		// 加载统计数据
 		await this.loadStatistics();
 		

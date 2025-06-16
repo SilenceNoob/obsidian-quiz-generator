@@ -12,6 +12,7 @@ export class QuizModal extends Modal {
 	private questions: Question[];
 	private currentQuestionIndex: number = 0;
 	private userAnswers: Map<string, number[]> = new Map();
+	private userTextAnswers: Map<string, string> = new Map(); // 存储思考题的文本答案
 	private onComplete: (result: QuizResult) => void;
 	private startTime: number;
 	private modalSize: { width: number; height: number };
@@ -80,28 +81,43 @@ export class QuizModal extends Modal {
 			cls: 'quiz-question-text'
 		});
 
-		// Options
-		const optionsContainer = questionContainer.createDiv('quiz-options-container');
-		const currentAnswers = this.userAnswers.get(question.id) || [];
-
-		question.options.forEach((option, index) => {
-			const optionContainer = optionsContainer.createDiv('quiz-option');
-			
-			const input = optionContainer.createEl('input');
-			input.type = question.type === 'multiple_answer' ? 'checkbox' : 'radio';
-			input.name = `question_${question.id}`;
-			input.value = index.toString();
-			input.id = `option_${question.id}_${index}`;
-			input.checked = currentAnswers.includes(index);
-
-			const label = optionContainer.createEl('label');
-			label.htmlFor = input.id;
-			label.setText(option);
-
-			input.addEventListener('change', () => {
-				this.handleAnswerChange(question.id, index, input.checked, question.type);
+		// Options or text input for thinking questions
+		if (question.type === 'thinking') {
+			// 思考题：显示文本输入框
+			const textContainer = questionContainer.createDiv('quiz-thinking-container');
+			const textArea = textContainer.createEl('textarea');
+			textArea.placeholder = '请在此输入您的思考和分析...';
+			textArea.value = this.userTextAnswers.get(question.id) || '';
+			textArea.rows = 8;
+			textArea.style.width = '100%';
+			textArea.style.resize = 'vertical';
+			textArea.addEventListener('input', () => {
+				this.userTextAnswers.set(question.id, textArea.value);
 			});
-		});
+		} else {
+			// 选择题：显示选项
+			const optionsContainer = questionContainer.createDiv('quiz-options-container');
+			const currentAnswers = this.userAnswers.get(question.id) || [];
+
+			question.options.forEach((option, index) => {
+				const optionContainer = optionsContainer.createDiv('quiz-option');
+				
+				const input = optionContainer.createEl('input');
+				input.type = question.type === 'multiple_answer' ? 'checkbox' : 'radio';
+				input.name = `question_${question.id}`;
+				input.value = index.toString();
+				input.id = `option_${question.id}_${index}`;
+				input.checked = currentAnswers.includes(index);
+
+				const label = optionContainer.createEl('label');
+				label.htmlFor = input.id;
+				label.setText(option);
+
+				input.addEventListener('change', () => {
+					this.handleAnswerChange(question.id, index, input.checked, question.type);
+				});
+			});
+		}
 
 		// Navigation buttons
 		const buttonContainer = contentEl.createDiv('quiz-button-container');
@@ -175,19 +191,30 @@ export class QuizModal extends Modal {
 		let correctCount = 0;
 		
 		this.questions.forEach(question => {
-			const userAnswer = this.userAnswers.get(question.id) || [];
-			question.userAnswer = userAnswer;
-			
-			// Check if answer is correct
-			if (this.isAnswerCorrect(userAnswer, question.correct)) {
-				correctCount++;
+			if (question.type === 'thinking') {
+				// 思考题：保存用户文本答案，不计入分数
+				question.userText = this.userTextAnswers.get(question.id) || '';
+				question.userAnswer = []; // 思考题没有选择答案
+			} else {
+				// 选择题：保存用户选择答案并计算分数
+				const userAnswer = this.userAnswers.get(question.id) || [];
+				question.userAnswer = userAnswer;
+				
+				// Check if answer is correct
+				if (this.isAnswerCorrect(userAnswer, question.correct)) {
+					correctCount++;
+				}
 			}
 		});
 
+		// 只计算选择题的分数
+		const choiceQuestions = this.questions.filter(q => q.type !== 'thinking');
+		const totalChoiceQuestions = choiceQuestions.length;
+		
 		const result: QuizResult = {
 			score: correctCount,
-			totalQuestions: this.questions.length,
-			percentage: Math.round((correctCount / this.questions.length) * 100),
+			totalQuestions: totalChoiceQuestions, // 只计算选择题数量
+			percentage: totalChoiceQuestions > 0 ? Math.round((correctCount / totalChoiceQuestions) * 100) : 0,
 			questions: this.questions
 		};
 
@@ -215,6 +242,8 @@ export class QuizModal extends Modal {
 				return '多选题';
 			case 'true_false':
 				return '判断题';
+			case 'thinking':
+				return '思考题';
 			default:
 				return '未知题型';
 		}
