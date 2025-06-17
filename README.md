@@ -307,6 +307,14 @@ A: 思考题需要在文本框中输入答案，不是选择题
 
 如果这个插件对你有帮助，请考虑给个 ⭐ Star！
 
+## ☕ 支持开发
+
+如果这个插件对你有帮助，欢迎通过以下方式支持开发：
+
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/your_username)
+
+你的支持是我持续改进插件的动力！
+
 ## 📄 许可证
 
 本项目采用 GPL-3.0 许可证 - 查看 [LICENSE](LICENSE) 文件了解详情。
