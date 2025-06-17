@@ -4,8 +4,7 @@
 	"version": "1.0.0",
 	"minAppVersion": "0.15.0",
 	"description": "Generate quiz questions from random notes in your vault using DeepSeek AI. Supports multiple choice, true/false, and multiple answer questions with scoring and explanations.",
-	"author": "Your Name",
-	"authorUrl": "",
-	"fundingUrl": "",
+	"author": "Quest Generator Team",
+	"authorUrl": "https://github.com/your-username/obsidian-quest-generator",
 	"isDesktopOnly": false
 }
