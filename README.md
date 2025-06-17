@@ -1,18 +1,20 @@
-# Obsidian Quest Generator Plugin
+# Obsidian quzi Generator Plugin
 
-一个强大的 Obsidian 插件，可以从你的笔记库中随机选择笔记，并使用 DeepSeek API 生成测试题目。支持单选题、多选题和判断题，提供完整的答题界面和详细的结果分析。
+一个强大的 Obsidian 插件，可以从你的笔记库中智能选择笔记，并使用 DeepSeek AI 生成高质量的测试题目。支持多种题型，提供完整的答题界面和详细的成绩统计分析。
 
-## 功能特性
+## ✨ 功能特性
 
 ### 🎯 智能题目生成
-- **多种题型支持**：单选题、多选题、判断题
+- **多种题型支持**：单选题、多选题、判断题、思考题
 - **AI 驱动**：使用 DeepSeek API 生成高质量题目
 - **难度可调**：支持简单、中等、困难三个难度等级
 - **内容丰富**：每道题目都包含详细解析
+- **批量生成**：支持一次生成多道不同类型的题目
 
 ### 📚 灵活的笔记选择
 - **随机选择**：从整个笔记库中随机选择笔记
 - **当前笔记**：基于当前打开的笔记生成题目
+- **手动选择**：通过搜索界面手动选择特定笔记
 - **智能过滤**：支持最小字数限制、文件夹排除等
 - **多格式支持**：支持 .md、.txt 等多种文件格式
 
@@ -21,6 +23,7 @@
 - **实时反馈**：答题过程中的视觉反馈
 - **灵活导航**：支持题目间的前进后退
 - **响应式设计**：适配不同屏幕尺寸
+- **暗色主题**：完美适配 Obsidian 的暗色模式
 
 ### 📊 详细的结果分析
 - **综合评分**：百分比得分和等级评价
@@ -35,15 +38,16 @@
 - **成绩历史**：查看每个笔记的所有测验记录和分数变化
 - **数据可视化**：通过图表展示成绩分布和学习进度
 - **快速导航**：从统计面板直接打开对应的笔记文件
+- **数据管理**：支持清空单个笔记或所有笔记的测验记录
 
-## 安装方法
+## 🚀 安装方法
 
 ### 开发版安装
 
 1. **克隆仓库**
    ```bash
-   git clone <repository-url>
-   cd OBP_QuestGen
+   git clone https://github.com/SilenceNoob/obsidian-quiz-generator.git
+   cd obsidian-quiz-generator
    ```
 
 2. **安装依赖**
@@ -62,7 +66,7 @@
 5. **启用插件**
    在 Obsidian 设置中的「第三方插件」部分启用 "Quest Generator" 插件
 
-## 配置设置
+## ⚙️ 配置设置
 
 ### DeepSeek API 配置
 
@@ -72,12 +76,13 @@
 
 ### 题目生成设置
 
-- **题目数量**：设置每次生成的题目数量（1-20题）
-- **难度等级**：选择题目难度（简单/中等/困难）
-- **题目类型**：选择要生成的题型组合
+- **题目类型配置**：分别设置每种题型的生成数量
   - ✅ 单选题：四选一的选择题
   - ✅ 多选题：多个正确答案的选择题
   - ✅ 判断题：对错判断题
+  - ✅ 思考题：开放性问答题
+- **难度等级**：选择题目难度（简单/中等/困难）
+- **最大题目数**：设置每批次最大题目数量限制
 
 ### 笔记选择设置
 
@@ -86,7 +91,12 @@
 - **排除文件夹**：设置要排除的文件夹（用逗号分隔）
 - **文件扩展名**：设置要包含的文件类型
 
-## 使用方法
+### 界面设置
+
+- **答题界面尺寸**：自定义答题窗口的宽度和高度
+- **统计界面尺寸**：自定义统计窗口的宽度和高度
+
+## 📖 使用方法
 
 ### 基本使用
 
@@ -99,11 +109,15 @@
 2. **生成测验**
    - 点击左侧功能区的 🧠 图标
    - 或使用命令面板搜索 "生成测验"
-   - 选择 "从随机笔记生成测验" 或 "从当前笔记生成测验"
+   - 选择生成方式：
+     - "从随机笔记生成测验"：系统随机选择符合条件的笔记
+     - "从当前笔记生成测验"：基于当前打开的笔记
+     - 或通过弹出的选择界面手动选择特定笔记
 
 3. **答题**
    - 在弹出的测验界面中逐题作答
    - 可以随时查看当前进度
+   - 支持在题目间前进后退
    - 完成所有题目后提交答案
 
 4. **查看结果**
@@ -129,19 +143,6 @@
    - 查看分数历史和变化趋势
    - 直接打开笔记文件或清除测验记录
 
-### 📊 笔记元数据
-
-插件会在笔记的 frontmatter 中自动添加以下字段：
-
-```yaml
----
-quiz-scores: [85, 92, 78]  # 所有测验分数
-quiz-average: 85           # 平均分
-quiz-attempts: 3           # 测验次数
-quiz-last-attempt: "2024-01-15T10:30:00.000Z"  # 最后测验时间
----
-```
-
 ### 命令列表
 
 - **从随机笔记生成测验**：随机选择笔记生成题目
@@ -155,26 +156,35 @@ quiz-last-attempt: "2024-01-15T10:30:00.000Z"  # 最后测验时间
 - **多选题注意**：多选题需要选择所有正确答案
 - **利用解析**：答题后仔细阅读解析加深理解
 - **错题回顾**：重点关注答错的题目
+- **思考题作答**：思考题为开放性问题，需要输入文字回答
 
-## 开发说明
+## 🛠️ 开发说明
 
 ### 项目结构
 
 ```
-OBP_QuestGen/
-├── main.ts              # 插件主文件
-├── manifest.json        # 插件清单
-├── package.json         # 项目配置
-├── tsconfig.json        # TypeScript 配置
-├── esbuild.config.mjs   # 构建配置
-├── styles.css           # 样式文件
+obsidian-quiz-generator/
+├── main.ts                    # 插件主文件
+├── manifest.json              # 插件清单
+├── package.json               # 项目配置
+├── tsconfig.json              # TypeScript 配置
+├── esbuild.config.mjs         # 构建配置
+├── styles.css                 # 样式文件
 ├── src/
-│   ├── DeepSeekAPI.ts      # DeepSeek API 接口
-│   ├── QuestionGenerator.ts # 题目生成器
-│   ├── NoteSelector.ts     # 笔记选择器
-│   ├── QuizModal.ts        # 答题界面
-│   └── ResultModal.ts      # 结果展示界面
-└── README.md            # 说明文档
+│   ├── DeepSeekAPI.ts         # DeepSeek API 接口
+│   ├── QuestionGenerator.ts   # 题目生成器
+│   ├── NoteSelector.ts        # 笔记选择器
+│   ├── NoteSelectionModal.ts  # 笔记选择界面
+│   ├── QuizModal.ts           # 答题界面
+│   ├── ResultModal.ts         # 结果展示界面
+│   ├── ScoreManager.ts        # 成绩管理器
+│   ├── StatisticsModal.ts     # 统计界面
+│   ├── ConfirmationModal.ts   # 确认对话框
+│   └── note-selection-modal.css # 笔记选择样式
+├── .github/
+│   └── workflows/
+│       └── release.yml        # GitHub Actions 发布流程
+└── README.md                  # 说明文档
 ```
 
 ### 开发命令
@@ -201,7 +211,7 @@ npm run version
 - **esbuild**：快速构建工具
 - **CSS3**：现代样式设计
 
-## API 说明
+## 📡 API 说明
 
 ### DeepSeek API
 
@@ -225,12 +235,33 @@ npm run version
       "options": ["选项A", "选项B", "选项C", "选项D"],
       "correct_answer": [0],
       "explanation": "详细解析"
+    },
+    {
+      "type": "multiple_answer",
+      "question": "多选题内容",
+      "options": ["选项A", "选项B", "选项C", "选项D"],
+      "correct_answer": [0, 2],
+      "explanation": "详细解析"
+    },
+    {
+      "type": "true_false",
+      "question": "判断题内容",
+      "options": ["正确", "错误"],
+      "correct_answer": [0],
+      "explanation": "详细解析"
+    },
+    {
+      "type": "thinking",
+      "question": "思考题内容",
+      "options": [],
+      "correct_answer": [],
+      "explanation": "参考答案和解析"
     }
   ]
 }
 ```
 
-## 故障排除
+## 🔧 故障排除
 
 ### 常见问题
 
@@ -246,35 +277,27 @@ A: 确保笔记内容足够丰富，尝试选择其他笔记
 **Q: 界面显示异常**
 A: 尝试重启 Obsidian 或重新安装插件
 
-### 调试模式
+**Q: 统计数据不显示**
+A: 确保已经完成过至少一次测验，数据会自动保存
 
-开启 Obsidian 的开发者工具（Ctrl+Shift+I）查看控制台日志获取详细错误信息。
+**Q: 思考题无法作答**
+A: 思考题需要在文本框中输入答案，不是选择题
 
-## 贡献指南
+## 📝 更新日志
 
-欢迎提交 Issue 和 Pull Request！
+### v0.0.1
 
-1. Fork 本仓库
-2. 创建特性分支 (`git checkout -b feature/AmazingFeature`)
-3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
-4. 推送到分支 (`git push origin feature/AmazingFeature`)
-5. 开启 Pull Request
-
-## 许可证
-
-本项目采用 GPL3.0 许可证 - 查看 [LICENSE](LICENSE) 文件了解详情。
-
-## 更新日志
-
-### v1.0.0
 - 🎉 初始版本发布
-- ✨ 支持单选题、多选题、判断题生成
+- ✨ 支持单选题、多选题、判断题、思考题生成
 - ✨ 完整的答题和结果展示界面
 - ✨ DeepSeek API 集成
 - ✨ 灵活的笔记选择和过滤
 - ✨ 响应式设计和暗色主题支持
+- ✨ 完整的成绩统计和数据可视化功能
+- ✨ 手动笔记选择界面
+- ✨ 数据管理和清理功能
 
-## 致谢
+## 🙏 致谢
 
 - [Obsidian](https://obsidian.md/) - 优秀的笔记软件
 - [DeepSeek](https://www.deepseek.com/) - 强大的 AI 模型
@@ -283,3 +306,7 @@ A: 尝试重启 Obsidian 或重新安装插件
 ---
 
 如果这个插件对你有帮助，请考虑给个 ⭐ Star！
+
+## 📄 许可证
+
+本项目采用 GPL-3.0 许可证 - 查看 [LICENSE](LICENSE) 文件了解详情。
