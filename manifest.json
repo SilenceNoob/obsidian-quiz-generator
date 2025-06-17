@@ -1,7 +1,7 @@
 {
-	"id": "quest-generator",
-	"name": "Quest Generator",
-	"version": "1.0.0",
+	"id": "quiz-generator",
+	"name": "Quiz Generator",
+	"version": "0.0.4",
 	"minAppVersion": "0.15.0",
 	"description": "Generate quiz questions from random notes in your vault using DeepSeek AI. Supports multiple choice, true/false, and multiple answer questions with scoring and explanations.",
 	"author": "Quest Generator Team",
