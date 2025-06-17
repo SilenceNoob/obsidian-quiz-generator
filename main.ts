@@ -24,6 +24,10 @@ interface QuestGeneratorSettings {
 		width: number;
 		height: number;
 	};
+	statisticsModalSize: {
+		width: number;
+		height: number;
+	};
 	maxQuestionsPerBatch: number; // 每批次最大题目数量
 }
 
@@ -46,6 +50,10 @@ const DEFAULT_SETTINGS: QuestGeneratorSettings = {
 	modalSize: {
 		width: 800,
 		height: 600
+	},
+	statisticsModalSize: {
+		width: 1200,
+		height: 900
 	},
 	maxQuestionsPerBatch: 10
 };
@@ -160,7 +168,7 @@ export default class QuestGeneratorPlugin extends Plugin {
 				return;
 			}
 
-			new Notice(`已选择笔记：${selectedNote.title}`);
+			new Notice(`已选择笔记：${selectedNote.file.basename}`);
 			// 使用文件路径作为记录分数的key，但保留显示标题用于题目生成
 			await this.generateQuizFromNote(selectedNote.path, selectedNote.content, selectedNote.title);
 			
@@ -349,7 +357,7 @@ export default class QuestGeneratorPlugin extends Plugin {
 		await this.scoreManager.recordScore(noteTitle, result);
 		
 		// 显示结果
-		const resultModal = new ResultModal(this.app, result, this.settings.modalSize, this.scoreManager, this.questionGenerator);
+		const resultModal = new ResultModal(this.app, result, this.settings.modalSize, this.scoreManager, this, this.questionGenerator);
 		resultModal.open();
 	}
 
@@ -399,7 +407,7 @@ export default class QuestGeneratorPlugin extends Plugin {
 	}
 
 	async showStatistics() {
-		const statisticsModal = new StatisticsModal(this.app, this.scoreManager);
+		const statisticsModal = new StatisticsModal(this.app, this.scoreManager, this.settings.statisticsModalSize);
 		statisticsModal.open();
 	}
 
@@ -570,6 +578,30 @@ class QuestGeneratorSettingTab extends PluginSettingTab {
 				}));
 
 		new Setting(containerEl)
+			.setName('统计模态框宽度')
+			.setDesc('统计信息模态框的宽度（像素，800-1600）')
+			.addSlider(slider => slider
+				.setLimits(800, 1600, 50)
+				.setValue(this.plugin.settings.statisticsModalSize.width)
+				.setDynamicTooltip()
+				.onChange(async (value) => {
+					this.plugin.settings.statisticsModalSize.width = value;
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
+			.setName('统计模态框高度')
+			.setDesc('统计信息模态框的高度（像素，600-1200）')
+			.addSlider(slider => slider
+				.setLimits(600, 1200, 50)
+				.setValue(this.plugin.settings.statisticsModalSize.height)
+				.setDynamicTooltip()
+				.onChange(async (value) => {
+					this.plugin.settings.statisticsModalSize.height = value;
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
 			.setName('每批次最大题目数量')
 			.setDesc('单次API调用生成的最大题目数量，避免超出token限制（1-20）')
 			.addSlider(slider => slider
@@ -603,9 +635,9 @@ class QuestGeneratorSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName('单选题数量')
-			.setDesc('生成单选题的数量（0-50，4个选项，1个正确答案）')
+			.setDesc('生成单选题的数量（0-10，4个选项，1个正确答案）')
 			.addSlider(slider => slider
-				.setLimits(0, 50, 1)
+				.setLimits(0, 10, 1)
 				.setValue(this.plugin.settings.questionTypes.multipleChoice)
 				.setDynamicTooltip()
 				.onChange(async (value) => {
@@ -615,9 +647,9 @@ class QuestGeneratorSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName('多选题数量')
-			.setDesc('生成多选题的数量（0-50，4-6个选项，2-3个正确答案）')
+			.setDesc('生成多选题的数量（0-10，4-6个选项，2-3个正确答案）')
 			.addSlider(slider => slider
-				.setLimits(0, 50, 1)
+				.setLimits(0, 10, 1)
 				.setValue(this.plugin.settings.questionTypes.multipleAnswer)
 				.setDynamicTooltip()
 				.onChange(async (value) => {
@@ -627,9 +659,9 @@ class QuestGeneratorSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName('判断题数量')
-			.setDesc('生成判断题的数量（0-50，正确/错误）')
+			.setDesc('生成判断题的数量（0-10，正确/错误）')
 			.addSlider(slider => slider
-				.setLimits(0, 50, 1)
+				.setLimits(0, 10, 1)
 				.setValue(this.plugin.settings.questionTypes.trueFalse)
 				.setDynamicTooltip()
 				.onChange(async (value) => {
@@ -639,9 +671,9 @@ class QuestGeneratorSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName('思考题数量')
-			.setDesc('生成思考题的数量（0-50，开放性问题，需要深入思考和分析）')
+			.setDesc('生成思考题的数量（0-5，开放性问题，需要深入思考和分析）')
 			.addSlider(slider => slider
-				.setLimits(0, 50, 1)
+				.setLimits(0, 5, 1)
 				.setValue(this.plugin.settings.questionTypes.thinking)
 				.setDynamicTooltip()
 				.onChange(async (value) => {
@@ -736,24 +768,65 @@ class QuestGeneratorSettingTab extends PluginSettingTab {
 			createStatItem('总词数', stats.totalWordCount.toLocaleString());
 			createStatItem('平均词数', stats.averageWordCount);
 			
-			if (Object.keys(stats.folderDistribution).length > 0) {
-				container.createEl('h4', { text: '文件夹分布' });
-				const folderList = container.createDiv('folder-distribution');
-				
-				Object.entries(stats.folderDistribution)
-					.sort(([,a], [,b]) => b - a)
-					.slice(0, 10) // Show top 10 folders
-					.forEach(([folder, count]) => {
-						const item = folderList.createDiv('folder-item');
-						item.createEl('span', { text: folder || 'Root', cls: 'folder-name' });
-						item.createEl('span', { text: count.toString(), cls: 'folder-count' });
-					});
-			}
+			// 文件夹分布功能已隐藏
+			// if (Object.keys(stats.folderDistribution).length > 0) {
+			// 	container.createEl('h4', { text: '文件夹分布' });
+			// 	container.createEl('p', { 
+			// 		text: '显示符合生成题目条件的笔记在各文件夹中的分布情况，按笔记数量排序（最多显示前10个文件夹）',
+			// 		cls: 'setting-item-description'
+			// 	});
+			// 	const folderList = container.createDiv('folder-distribution');
+			// 	
+			// 	Object.entries(stats.folderDistribution)
+			// 		.sort(([,a], [,b]) => b - a)
+			// 		.slice(0, 10) // Show top 10 folders
+			// 		.forEach(([folder, count]) => {
+			// 			const item = folderList.createDiv('folder-item');
+			// 			item.createEl('span', { text: folder || 'Root', cls: 'folder-name' });
+			// 			item.createEl('span', { text: count.toString(), cls: 'folder-count' });
+			// 		});
+			// }
 			
 		} catch (error) {
 			console.error('Error loading vault stats:', error);
 			container.empty();
 			container.createEl('p', { text: '加载统计信息失败', cls: 'error-message' });
 		}
+
+		// 赞助信息
+		this.containerEl.createEl('h2', { text: '支持开发' });
+		
+		const supportContainer = this.containerEl.createDiv('support-section');
+		supportContainer.createEl('p', {
+			text: '如果这个插件对您有帮助，欢迎支持开发者继续改进和维护！',
+			cls: 'setting-item-description'
+		});
+
+		// Ko-fi 赞助
+		const kofiContainer = supportContainer.createDiv('kofi-container');
+		const kofiLink = kofiContainer.createEl('a', {
+			href: 'https://ko-fi.com/zzxxh',
+			text: '☕ Support me on Ko-fi',
+			cls: 'kofi-link'
+		});
+		kofiLink.setAttribute('target', '_blank');
+		kofiLink.setAttribute('rel', 'noopener noreferrer');
+
+		// B站充电
+		const bilibiliContainer = supportContainer.createDiv('bilibili-container');
+		const bilibiliLink = bilibiliContainer.createEl('a', {
+			href: 'https://space.bilibili.com/19131632',
+			text: '⚡ B站充电支持',
+			cls: 'bilibili-link'
+		});
+		bilibiliLink.setAttribute('target', '_blank');
+		bilibiliLink.setAttribute('rel', 'noopener noreferrer');
+
+
+
+		supportContainer.createEl('p', {
+			text: '您的支持是我持续开发的动力，感谢！',
+			cls: 'setting-item-description support-thanks'
+		});
 	}
 }

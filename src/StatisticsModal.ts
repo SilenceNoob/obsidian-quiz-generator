@@ -6,10 +6,12 @@ export class StatisticsModal extends Modal {
 	private statistics: ScoreStatistics | null = null;
 	private currentView: 'overview' | 'details' = 'overview';
 	private selectedNote: NoteScore | null = null;
+	private modalSize: { width: number; height: number };
 
-	constructor(app: App, scoreManager: ScoreManager) {
+	constructor(app: App, scoreManager: ScoreManager, modalSize: { width: number; height: number }) {
 		super(app);
 		this.scoreManager = scoreManager;
+		this.modalSize = modalSize;
 	}
 
 	async onOpen() {
@@ -17,10 +19,12 @@ export class StatisticsModal extends Modal {
 		contentEl.addClass('statistics-modal');
 
 		// 设置模态框大小
-		this.modalEl.style.width = '90vw';
-		this.modalEl.style.height = '80vh';
-		this.modalEl.style.maxWidth = '1000px';
-		this.modalEl.style.maxHeight = '800px';
+		this.modalEl.style.width = `${this.modalSize.width}px`;
+		this.modalEl.style.height = `${this.modalSize.height}px`;
+		this.modalEl.style.maxWidth = `${this.modalSize.width}px`;
+		this.modalEl.style.maxHeight = `${this.modalSize.height}px`;
+		this.modalEl.style.minWidth = '800px';
+		this.modalEl.style.minHeight = '600px';
 
 		// 加载统计数据
 		await this.loadStatistics();

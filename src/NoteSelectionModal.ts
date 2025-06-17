@@ -100,7 +100,7 @@ export class NoteSelectionModal extends Modal {
 				return;
 			}
 
-			new Notice(`已选择笔记：${selectedNote.title}`);
+			new Notice(`已选择笔记：${selectedNote.file.basename}`);
 			this.close();
 			this.onNoteSelected(selectedNote);
 			

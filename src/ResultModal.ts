@@ -11,12 +11,14 @@ export class ResultModal extends Modal {
 	private modalSize: { width: number; height: number };
 	private scoreManager: ScoreManager;
 	private questionGenerator?: QuestionGenerator;
+	private plugin: any;
 
-	constructor(app: App, result: QuizResult, modalSize: { width: number; height: number }, scoreManager: ScoreManager, questionGenerator?: QuestionGenerator) {
+	constructor(app: App, result: QuizResult, modalSize: { width: number; height: number }, scoreManager: ScoreManager, plugin: any, questionGenerator?: QuestionGenerator) {
 		super(app);
 		this.result = result;
 		this.modalSize = modalSize;
 		this.scoreManager = scoreManager;
+		this.plugin = plugin;
 		this.questionGenerator = questionGenerator;
 	}
 
@@ -418,7 +420,7 @@ export class ResultModal extends Modal {
 	}
 
 	private openStatisticsModal() {
-		const statisticsModal = new StatisticsModal(this.app, this.scoreManager);
+		const statisticsModal = new StatisticsModal(this.app, this.scoreManager, this.plugin.settings.statisticsModalSize);
 		statisticsModal.open();
 	}
 
